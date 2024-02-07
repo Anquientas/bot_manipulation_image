@@ -16,59 +16,48 @@ NOT_TOKEN = (
     'Программа принудительно остановлена.'
 )
 
-TEMP_FILE_NAME = 'message.txt'
-ENHANCES = ('Contrast',)
+TEMP_FILE_NAME = '{name}_temp_filename.txt'
+ENHANCES = ('contrast', 'resize')
 FILTERS = {
-    'BLUR': ImageFilter.BLUR,
-    'CONTOUR': ImageFilter.CONTOUR,
-    'DETAIL': ImageFilter.DETAIL,
-    'EDGE_ENHANCE': ImageFilter.EDGE_ENHANCE,
-    'EDGE_ENHANCE_MORE': ImageFilter.EDGE_ENHANCE_MORE,
-    'EMBOSS': ImageFilter.EMBOSS,
-    'FIND_EDGES': ImageFilter.FIND_EDGES,
-    'SHARPEN': ImageFilter.SHARPEN,
-    'SMOOTH': ImageFilter.SMOOTH,
-    'SMOOTH_MORE': ImageFilter.SMOOTH_MORE
+    'blur': ImageFilter.BLUR,
+    'contour': ImageFilter.CONTOUR,
+    'detail': ImageFilter.DETAIL,
+    'edge_enhance': ImageFilter.EDGE_ENHANCE,
+    'edge_enhance_more': ImageFilter.EDGE_ENHANCE_MORE,
+    'emboss': ImageFilter.EMBOSS,
+    'find_edges': ImageFilter.FIND_EDGES,
+    'sharpen': ImageFilter.SHARPEN,
+    'smooth': ImageFilter.SMOOTH,
+    'smooth_more': ImageFilter.SMOOTH_MORE
 }
-FILTERS_DESCRIPTIONS = {
-    'BLUR': 'размытие изображения',
-    'CONTOUR': 'отрисовка контуров на изображении',
-    'DETAIL': 'увеличение четкости деталей',
-    'EDGE_ENHANCE': 'улучшение краев',
-    'EDGE_ENHANCE_MORE': 'усиленное улучшение краев',
-    'EMBOSS': 'перевод изображения в рельефное',
-    'FIND_EDGES': 'поиск краев',
-    'SHARPEN': 'заточка',
-    'SMOOTH': 'сглаживание изображения',
-    'SMOOTH_MORE': 'сильное сглаживание изображения'
-}
-ENHANCES_DESCRIPTIONS = {
-    'Contrast': 'изменение контрастности изображения (!!!)',
+MANIPULATION_DESCRIPTIONS = {
+    'Blur': 'размытие изображения',
+    'Contour': 'отрисовка контуров на изображении',
+    'Detail': 'увеличение четкости деталей',
+    'Edge_enhance': 'улучшение краев',
+    'Edge_enhance_more': 'усиленное улучшение краев',
+    'Emboss': 'перевод изображения в рельефное',
+    'Find_edges': 'поиск краев',
+    'Sharpen': 'заточка',
+    'Smooth': 'сглаживание изображения',
+    'Smooth_more': 'сильное сглаживание изображения',
+    'Resize': 'изменение контрастности изображения (!!!)',
+    'Contrast': 'сжатие изображения (!!!)',
 }
 TEXT_MANIPULATION = '\t- <b>{manipulation}</b> - {description}\n'
 
 
 def create_message_manipulations():
     message = 'Возможные преобразования:\n'
-    for manipulation in FILTERS_DESCRIPTIONS:
+    for manipulation in MANIPULATION_DESCRIPTIONS:
         text = TEXT_MANIPULATION.format(
             manipulation=manipulation,
-            description=FILTERS_DESCRIPTIONS[manipulation]
+            description=MANIPULATION_DESCRIPTIONS[manipulation]
         )
         message += text
-    for manipulation in ENHANCES_DESCRIPTIONS:
-        text = TEXT_MANIPULATION.format(
-            manipulation=manipulation,
-            description=ENHANCES_DESCRIPTIONS[manipulation]
-        )
-        message += text
-    message += TEXT_MANIPULATION.format(
-            manipulation='Resize',
-            description='сжатие изображения (!!!)'
-        )
     message += (
         '(!!!) отмечены преобразования, для которых '
-        'после ключа через пробел необходимо указать число\n'
+        'после ключа через пробел необходимо указать число\n\n'
         'Для использования выбранного преобразования '
         'введите один из ключей:'
     )
@@ -99,14 +88,14 @@ def send_message(chat_id, message):
     )
 
 
-def download_file(file_id):
+def download_file(file_id, user_first_name):
     """Функция скачивания присланного файла."""
     file_info = bot.get_file(file_id)
     downloaded_file = bot.download_file(file_info.file_path)
     filename = (file_id + file_info.file_path).replace('/', '_')
     with open(filename, 'wb') as file:
         file.write(downloaded_file)
-    with open(TEMP_FILE_NAME, 'w') as file:
+    with open(TEMP_FILE_NAME.format(name=user_first_name), 'w') as file:
         file.write(filename)
 
 
@@ -149,7 +138,7 @@ def greetings(message):
 def get_image(message):
     """Функция получения изображения и отправки запроса фильтра."""
     file_id = message.photo[-1].file_id
-    download_file(file_id)
+    download_file(file_id, message.chat.first_name)
     send_message(
         message.chat.id,
         MANIPULATIONS

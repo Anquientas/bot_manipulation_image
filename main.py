@@ -5,9 +5,16 @@ from PIL import Image, ImageEnhance, ImageFilter
 import os
 
 
-GREETINGS = 'Привет, {name}!'
+GREETINGS = (
+    'Привет, {name}!\n'
+    'Отправьте одно изображение и выберите преобразование'
+)
 ERROR_MANIPULATION_NAME = 'Ключ преобразования введен с ошибкой!'
 UNKNOWN_ERROR = 'Неизвестная ошибка при выборе фильтра'
+NOT_TOKEN = (
+    'Отсутствует(ют) обязательная(ые) переменная(ые) окружения: {tokens}!\n'
+    'Программа принудительно остановлена.'
+)
 
 TEMP_FILE_NAME = 'message.txt'
 ENHANCES = ('Contrast',)
@@ -70,11 +77,26 @@ def create_message_manipulations():
 
 MANIPULATIONS = create_message_manipulations()
 
-
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 
+
+def check_tokens():
+    if not TELEGRAM_TOKEN:
+        NOT_TOKEN.format(tokens=TELEGRAM_TOKEN)
+
+
+check_tokens()
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
+
+
+def send_message(chat_id, message):
+    """Функция отправки сообщения в чат."""
+    bot.send_message(
+        chat_id,
+        message,
+        parse_mode='HTML'
+    )
 
 
 def download_file(file_id):
@@ -88,35 +110,27 @@ def download_file(file_id):
         file.write(filename)
 
 
-def send_request_filter(chat_id):
-    """Функция отправки сообщения с запросом фильтра."""
-    bot.send_message(
-        chat_id,
-        MANIPULATIONS,
-        parse_mode='HTML'
-    )
-
-
 def filtration_image(filename, filtername, number, chat_id):
     """Функция применения преобразования к изображению."""
     source_image = Image.open(filename)
-    if filtername in FILTERS:
-        enhanced_image = source_image.filter(FILTERS[filtername])
+    if filtername.upper() in FILTERS:
+        enhanced_image = source_image.filter(FILTERS[filtername.upper()])
         enhanced_image = enhanced_image.convert('RGB')
         enhanced_image.save(filename)
     elif filtername.lower() == 'contrast':
         enhanced_image = ImageEnhance.Contrast(source_image).enhance(number)
         enhanced_image.save(filename)
     elif filtername.lower() == 'resize':
+        number = int(number)
         enhanced_image = source_image.resize(
             (
-                source_image.size[0] // int(number),
-                source_image.size[1] // int(number)
+                source_image.size[0] // number,
+                source_image.size[1] // number
             )
         )
         enhanced_image.save(filename)
     else:
-        bot.send_message(
+        send_message(
             chat_id,
             ERROR_MANIPULATION_NAME
         )
@@ -125,7 +139,7 @@ def filtration_image(filename, filtername, number, chat_id):
 @bot.message_handler(commands=['start'])
 def greetings(message):
     """Функция отправки приветственного сообщения."""
-    bot.send_message(
+    send_message(
         message.chat.id,
         GREETINGS.format(name=message.chat.first_name)
     )
@@ -136,7 +150,10 @@ def get_image(message):
     """Функция получения изображения и отправки запроса фильтра."""
     file_id = message.photo[-1].file_id
     download_file(file_id)
-    send_request_filter(message.chat.id)
+    send_message(
+        message.chat.id,
+        MANIPULATIONS
+    )
 
 
 @bot.message_handler(content_types=['text'])
@@ -156,7 +173,7 @@ def send_manipulation_image(message):
         bot.send_photo(message.chat.id, image)
         image.close()
     else:
-        bot.send_message(
+        send_message(
             message.chat.id,
             UNKNOWN_ERROR
         )
